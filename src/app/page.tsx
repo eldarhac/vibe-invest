@@ -1,65 +1,100 @@
-import Image from "next/image";
+"use client";
 
-export default function Home() {
+import { useState, useCallback } from "react";
+import { useRouter } from "next/navigation";
+import VibeInput from "@/components/VibeInput";
+import ClarificationPanel from "@/components/ClarificationPanel";
+import type { VibeInput as VibeInputType, VibeAnalysis } from "@/types/vibe";
+
+type Stage = "input" | "clarify" | "loading" | "error";
+
+export default function LandingPage() {
+  const router = useRouter();
+  const [stage, setStage] = useState<Stage>("input");
+  const [vibe, setVibe] = useState("");
+  const [error, setError] = useState<string | null>(null);
+
+  const handleVibeSubmit = useCallback((rawVibe: string) => {
+    setVibe(rawVibe);
+    setStage("clarify");
+  }, []);
+
+  const handlePreferencesSubmit = useCallback(
+    async (preferences: VibeInputType["userPreferences"]) => {
+      setStage("loading");
+      setError(null);
+
+      try {
+        const response = await fetch("/api/analyze-vibe", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ rawText: vibe, userPreferences: preferences }),
+        });
+
+        if (!response.ok) {
+          const data = await response.json();
+          throw new Error(data.error ?? "Something went wrong.");
+        }
+
+        const { analysis }: { analysis: VibeAnalysis } = await response.json();
+        const id = crypto.randomUUID();
+        localStorage.setItem(`vibe-${id}`, JSON.stringify({ vibe, analysis }));
+        router.push(`/vibe/${id}`);
+      } catch (err) {
+        setError(err instanceof Error ? err.message : "Something went wrong.");
+        setStage("error");
+      }
+    },
+    [vibe, router]
+  );
+
   return (
-    <div className="flex flex-col flex-1 items-center justify-center bg-zinc-50 font-sans dark:bg-black">
-      <main className="flex flex-1 w-full max-w-3xl flex-col items-center justify-between py-32 px-16 bg-white dark:bg-black sm:items-start">
-        <Image
-          className="dark:invert"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={100}
-          height={20}
-          priority
+    <div className="max-w-5xl mx-auto px-4 py-16 space-y-12">
+      {(stage === "input" || stage === "error") && (
+        <>
+          <div className="text-center space-y-4 max-w-2xl mx-auto">
+            <h1 className="text-5xl font-bold text-slate-900 tracking-tight leading-tight">
+              Invest in what you{" "}
+              <span className="text-indigo-600">believe</span> is happening.
+            </h1>
+            <p className="text-xl text-slate-500">
+              Describe a trend, cultural shift, technology, behavior, or &ldquo;vibe&rdquo; — and get a
+              clear investment research map in seconds.
+            </p>
+            <p className="text-sm text-slate-400">
+              Educational research only · Not financial advice
+            </p>
+          </div>
+
+          {error && (
+            <div className="max-w-2xl mx-auto bg-rose-50 border border-rose-200 rounded-xl p-4 text-sm text-rose-700">
+              {error}
+            </div>
+          )}
+
+          <VibeInput onSubmit={handleVibeSubmit} />
+        </>
+      )}
+
+      {stage === "clarify" && (
+        <ClarificationPanel
+          vibe={vibe}
+          onSubmit={handlePreferencesSubmit}
+          loading={false}
         />
-        <div className="flex flex-col items-center gap-6 text-center sm:items-start sm:text-left">
-          <h1 className="max-w-xs text-3xl font-semibold leading-10 tracking-tight text-black dark:text-zinc-50">
-            To get started, edit the page.tsx file.
-          </h1>
-          <p className="max-w-md text-lg leading-8 text-zinc-600 dark:text-zinc-400">
-            Looking for a starting point or more instructions? Head over to{" "}
-            <a
-              href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Templates
-            </a>{" "}
-            or the{" "}
-            <a
-              href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Learning
-            </a>{" "}
-            center.
-          </p>
+      )}
+
+      {stage === "loading" && (
+        <div className="text-center space-y-6 py-16">
+          <div className="w-16 h-16 border-4 border-indigo-200 border-t-indigo-600 rounded-full animate-spin mx-auto" />
+          <div>
+            <p className="text-xl font-semibold text-slate-800">Building your research map…</p>
+            <p className="text-slate-500 mt-2">
+              Analyzing the vibe, identifying investable angles, and structuring the output.
+            </p>
+          </div>
         </div>
-        <div className="flex flex-col gap-4 text-base font-medium sm:flex-row">
-          <a
-            className="flex h-12 w-full items-center justify-center gap-2 rounded-full bg-foreground px-5 text-background transition-colors hover:bg-[#383838] dark:hover:bg-[#ccc] md:w-[158px]"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className="dark:invert"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={16}
-              height={16}
-            />
-            Deploy Now
-          </a>
-          <a
-            className="flex h-12 w-full items-center justify-center rounded-full border border-solid border-black/[.08] px-5 transition-colors hover:border-transparent hover:bg-black/[.04] dark:border-white/[.145] dark:hover:bg-[#1a1a1a] md:w-[158px]"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Documentation
-          </a>
-        </div>
-      </main>
+      )}
     </div>
   );
 }
