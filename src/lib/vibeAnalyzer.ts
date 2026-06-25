@@ -1,10 +1,10 @@
-import Anthropic from "@anthropic-ai/sdk";
+import OpenAI from "openai";
 import { buildUserPrompt, buildRefinementPrompt, SYSTEM_PROMPT } from "./prompts";
 import { buildBasket } from "./basketBuilder";
 import { MAIN_DISCLAIMER } from "./disclaimers";
 import type { VibeInput, VibeAnalysis } from "@/types/vibe";
 
-const client = new Anthropic();
+const client = new OpenAI();
 
 function extractJson(text: string): VibeAnalysis {
   const jsonMatch = text.match(/\{[\s\S]*\}/);
@@ -33,22 +33,19 @@ function overrideBasketsWithDeterministic(analysis: VibeAnalysis): void {
 }
 
 export async function analyzeVibe(input: VibeInput): Promise<VibeAnalysis> {
-  const message = await client.messages.create({
-    model: "claude-sonnet-4-6",
+  const completion = await client.chat.completions.create({
+    model: "gpt-4o-mini",
     max_tokens: 4096,
-    system: SYSTEM_PROMPT,
     messages: [
-      {
-        role: "user",
-        content: buildUserPrompt(input.rawText, input.userPreferences),
-      },
+      { role: "system", content: SYSTEM_PROMPT },
+      { role: "user", content: buildUserPrompt(input.rawText, input.userPreferences) },
     ],
   });
 
-  const content = message.content[0];
-  if (content.type !== "text") throw new Error("Unexpected non-text response from LLM");
+  const text = completion.choices[0]?.message?.content;
+  if (!text) throw new Error("Unexpected empty response from LLM");
 
-  const analysis = extractJson(content.text);
+  const analysis = extractJson(text);
   overrideBasketsWithDeterministic(analysis);
   ensureDisclaimers(analysis);
   return analysis;
@@ -61,11 +58,11 @@ export async function refineVibe(
 ): Promise<VibeAnalysis> {
   const currentTickers = currentAnalysis.candidates.map((c) => c.ticker);
 
-  const message = await client.messages.create({
-    model: "claude-sonnet-4-6",
+  const completion = await client.chat.completions.create({
+    model: "gpt-4o-mini",
     max_tokens: 4096,
-    system: SYSTEM_PROMPT,
     messages: [
+      { role: "system", content: SYSTEM_PROMPT },
       {
         role: "user",
         content: buildRefinementPrompt(
@@ -78,10 +75,10 @@ export async function refineVibe(
     ],
   });
 
-  const content = message.content[0];
-  if (content.type !== "text") throw new Error("Unexpected non-text response from LLM");
+  const text = completion.choices[0]?.message?.content;
+  if (!text) throw new Error("Unexpected empty response from LLM");
 
-  const refined = extractJson(content.text);
+  const refined = extractJson(text);
   overrideBasketsWithDeterministic(refined);
   ensureDisclaimers(refined);
   return refined;
