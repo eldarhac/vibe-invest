@@ -27,6 +27,9 @@ export function validateVibeAnalysisSchema(data: unknown): data is VibeAnalysis 
     Array.isArray(d.candidates) &&
     Array.isArray(d.sampleBaskets) &&
     Array.isArray(d.risks) &&
+    Array.isArray(d.counterarguments) &&
+    Array.isArray(d.causalMap) &&
+    Array.isArray(d.followUpSuggestions) &&
     Array.isArray(d.disclaimers)
   );
 }

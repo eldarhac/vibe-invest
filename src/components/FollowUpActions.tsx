@@ -1,5 +1,7 @@
 "use client";
 
+import { REFINEMENT_SUGGESTIONS } from "@/lib/disclaimers";
+
 interface FollowUpActionsProps {
   suggestions: string[];
   onRefine: (instruction: string) => void;
@@ -12,16 +14,7 @@ export default function FollowUpActions({
   loading = false,
 }: FollowUpActionsProps) {
   const displaySuggestions =
-    suggestions.length > 0
-      ? suggestions
-      : [
-          "Make this more conservative",
-          "Show ETF-only version",
-          "Explain like I'm new to investing",
-          "What would disprove this vibe?",
-          "Add international exposure",
-          "Focus on small caps",
-        ];
+    suggestions.length > 0 ? suggestions : REFINEMENT_SUGGESTIONS;
 
   return (
     <div className="card space-y-4">

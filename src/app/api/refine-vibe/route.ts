@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { refineVibe } from "@/lib/vibeAnalyzer";
+import { validateVibeAnalysisSchema } from "@/lib/validators";
 import type { RefinementRequest } from "@/types/vibe";
 
 export async function POST(request: NextRequest): Promise<NextResponse> {
@@ -18,7 +19,22 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
       );
     }
 
+    if (refinementInstruction.trim().length > 500) {
+      return NextResponse.json(
+        { error: "Refinement instruction too long." },
+        { status: 400 }
+      );
+    }
+
     const refined = await refineVibe(originalVibe, currentAnalysis, refinementInstruction);
+
+    if (!validateVibeAnalysisSchema(refined)) {
+      return NextResponse.json(
+        { error: "Refinement returned an unexpected format. Please try again." },
+        { status: 500 }
+      );
+    }
+
     return NextResponse.json({ analysis: refined });
   } catch (error) {
     console.error("refine-vibe error:", error);

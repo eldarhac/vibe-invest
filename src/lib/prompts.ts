@@ -24,9 +24,8 @@ Rules:
 - Return ONLY valid JSON. No prose before or after.`;
 
 export function buildUserPrompt(rawVibe: string, preferences?: object): string {
-  return `User vibe: "${rawVibe}"
-
-User preferences: ${preferences ? JSON.stringify(preferences, null, 2) : "none specified"}
+  return `<user_vibe>${rawVibe}</user_vibe>
+<user_preferences>${preferences ? JSON.stringify(preferences, null, 2) : "none specified"}</user_preferences>
 
 Return a VibeAnalysis JSON object matching this exact schema:
 
@@ -93,11 +92,11 @@ export function buildRefinementPrompt(
   currentTickers: string[],
   refinementInstruction: string
 ): string {
-  return `You previously analyzed the investment vibe: "${originalVibe}"
-Previous result title: "${currentTitle}"
-Previous candidates: ${currentTickers.join(", ")}
+  return `You previously analyzed the investment vibe: <original_vibe>${originalVibe}</original_vibe>
+Previous result title: <current_title>${currentTitle}</current_title>
+Previous candidates: <current_tickers>${currentTickers.join(", ")}</current_tickers>
 
-The user wants to refine with this instruction: "${refinementInstruction}"
+The user wants to refine with this instruction: <refinement_instruction>${refinementInstruction}</refinement_instruction>
 
 Apply these rules for common refinements:
 - "ETF only" / "ETF-only": Remove ALL individual stocks. Keep only ETFs and funds.
