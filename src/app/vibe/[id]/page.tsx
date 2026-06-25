@@ -43,9 +43,13 @@ export default function VibePage() {
       setNotFound(true);
       return;
     }
-    const parsed = JSON.parse(raw) as StoredVibe;
-    setStored(parsed);
-    setAnalysis(parsed.analysis);
+    try {
+      const parsed = JSON.parse(raw) as StoredVibe;
+      setStored(parsed);
+      setAnalysis(parsed.analysis);
+    } catch {
+      setNotFound(true);
+    }
   }, [id]);
 
   const handleRefine = useCallback(
