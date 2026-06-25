@@ -26,6 +26,10 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
       );
     }
 
+    if (originalVibe.trim().length > 2000) {
+      return NextResponse.json({ error: "Vibe text too long." }, { status: 400 });
+    }
+
     const refined = await refineVibe(originalVibe, currentAnalysis, refinementInstruction);
 
     if (!validateVibeAnalysisSchema(refined)) {
