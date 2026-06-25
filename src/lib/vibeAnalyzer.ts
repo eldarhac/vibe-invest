@@ -32,19 +32,23 @@ function overrideBasketsWithDeterministic(analysis: VibeAnalysis): void {
   ];
 }
 
-export async function analyzeVibe(input: VibeInput): Promise<VibeAnalysis> {
-  const completion = await client.chat.completions.create({
+const WEB_SEARCH_TOOL = [{ type: "web_search_preview" as const }];
+
+async function callLLM(systemPrompt: string, userPrompt: string): Promise<string> {
+  const response = await client.responses.create({
     model: "gpt-4o-mini",
-    max_tokens: 4096,
-    messages: [
-      { role: "system", content: SYSTEM_PROMPT },
-      { role: "user", content: buildUserPrompt(input.rawText, input.userPreferences) },
+    tools: WEB_SEARCH_TOOL,
+    input: [
+      { role: "system", content: systemPrompt },
+      { role: "user", content: userPrompt },
     ],
   });
+  if (!response.output_text) throw new Error("Unexpected empty response from LLM");
+  return response.output_text;
+}
 
-  const text = completion.choices[0]?.message?.content;
-  if (!text) throw new Error("Unexpected empty response from LLM");
-
+export async function analyzeVibe(input: VibeInput): Promise<VibeAnalysis> {
+  const text = await callLLM(SYSTEM_PROMPT, buildUserPrompt(input.rawText, input.userPreferences));
   const analysis = extractJson(text);
   overrideBasketsWithDeterministic(analysis);
   ensureDisclaimers(analysis);
@@ -57,27 +61,10 @@ export async function refineVibe(
   refinementInstruction: string
 ): Promise<VibeAnalysis> {
   const currentTickers = currentAnalysis.candidates.map((c) => c.ticker);
-
-  const completion = await client.chat.completions.create({
-    model: "gpt-4o-mini",
-    max_tokens: 4096,
-    messages: [
-      { role: "system", content: SYSTEM_PROMPT },
-      {
-        role: "user",
-        content: buildRefinementPrompt(
-          originalVibe,
-          currentAnalysis.title,
-          currentTickers,
-          refinementInstruction
-        ),
-      },
-    ],
-  });
-
-  const text = completion.choices[0]?.message?.content;
-  if (!text) throw new Error("Unexpected empty response from LLM");
-
+  const text = await callLLM(
+    SYSTEM_PROMPT,
+    buildRefinementPrompt(originalVibe, currentAnalysis.title, currentTickers, refinementInstruction)
+  );
   const refined = extractJson(text);
   overrideBasketsWithDeterministic(refined);
   ensureDisclaimers(refined);
